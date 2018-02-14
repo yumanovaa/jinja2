@@ -11,4 +11,6 @@ $template.render(@{
     Model = "Mustang"
     Color = "Red"
     })
+
+PS C:\>Hello Alex, I am in Ford Mustang!
 ```
