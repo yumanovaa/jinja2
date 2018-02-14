@@ -1,5 +1,4 @@
 # Jinja2 for PowerShell
-~~~~~~
 
 ## Basic API Usage
 ```PowerShell
