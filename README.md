@@ -4,7 +4,7 @@
 ```PowerShell
 Import-Module –Name .\jinja2 -PassThru
 
-$template = Set-Template('Hello {{ name }}, I am in {{Make }} {{ Model }}!')
+$template = Set-Template('Hello {{ name }}, I am in {{Make }} {{Model}}!')
 $template.render(@{
     name = "Alex"
     Make = "Ford"
@@ -12,5 +12,5 @@ $template.render(@{
     Color = "Red"
     })
 
-PS C:\>Hello Alex, I am in Ford Mustang!
+PS C:\>Hello Alex, I am inside Ford Mustang!
 ```
