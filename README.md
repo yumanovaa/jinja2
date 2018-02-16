@@ -4,14 +4,14 @@
 ```PowerShell
 Import-Module –Name .\jinja2 -PassThru
 
-$template = Set-Template('Hello {{ name }}, I am in {{Make }} {{Model}}!')
-$template.render(@{
+$template = Set-Template('Hello {{ Name }}, I am in {{Make }} {{Model}}!')
+$template.AddVareables(@{
     name = "Alex"
     Make = "Ford"
     Model = "Mustang"
     Color = "Red"
     })
-
+$template.render()
 PS C:\>Hello Alex, I am inside Ford Mustang!
 ```
 ## Work with files template
@@ -28,7 +28,6 @@ Web.config.jn2
   </connectionStrings>
 ...
 ```
-
 
 ```PowerShell
 $template = Set-Template(Get-Content .\Web.config.jn2)

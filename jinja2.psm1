@@ -14,6 +14,7 @@ class Template : Enveroment
     [System.IO.FileInfo]$TemplateFile
     [System.Object]$TemplateArrayString
     [pscustomobject]$DataCollection
+    [hashtable]$variables
 
     Template ($template) {
         switch ($template.GetType()) {
@@ -24,12 +25,12 @@ class Template : Enveroment
         $this.DataCollection = @()
     }
 
-    [string]render ($dictionary) {
+    [string]render () {
         [string]$Rezult = $this.TemplateString
-        if ($dictionary.GetType().Name -eq "Hashtable") {
-            foreach ($key in $dictionary.keys) {
+        if ($this.variables.GetType().Name -eq "Hashtable") {
+            foreach ($key in $this.variables.keys) {
                 if ($Rezult -match ($this.VARIABLE_START_STRING + '\s*' + $key  + '\s*' + $this.VARIABLE_END_STRING)){
-                    $Rezult = $Rezult -replace ($this.VARIABLE_START_STRING + '\s*' + $key  + '\s*' + $this.VARIABLE_END_STRING),($dictionary[$key])
+                    $Rezult = $Rezult -replace ($this.VARIABLE_START_STRING + '\s*' + $key  + '\s*' + $this.VARIABLE_END_STRING),($this.variables[$key])
                 }
             }
         } else {
@@ -50,28 +51,30 @@ class Template : Enveroment
         return $Rezult
     }
 
-    [System.Object]renderFile($dictionary) {
-        if ($dictionary.GetType().Name -eq "Hashtable") {
-            $Rezult = $this.TemplateArrayString
-            for ($i = 0; $i -le $Rezult.Count; $i++) {
-                Switch -regex ($Rezult[$i]) {
-                    '{{\s*\w+\s*}}' {
-                        $this.TemplateString = $Rezult[$i]
-                        $Rezult[$i] = $this.render($dictionary)
-                    }
-                    '{{\s*\w+\.\w+\s*}}' {
-                        $this.TemplateString = $Rezult[$i]
-                        $Rezult[$i] = $this.renderArray()
-                    }
+    [System.Object]renderFile() {        
+    $Rezult = $this.TemplateArrayString
+    for ($i = 0; $i -le $Rezult.Count; $i++) {
+        Switch -regex ($Rezult[$i]) {
+            '{{\s*\w+\s*}}' {
+                $this.TemplateString = $Rezult[$i]
+                $Rezult[$i] = $this.render()
+                }
+            '{{\s*\w+\.\w+\s*}}' {
+                $this.TemplateString = $Rezult[$i]
+                $Rezult[$i] = $this.renderArray()
                 }
             }
-        } else {
-            $Rezult = "FAILED! Metod render accept only hashtable!"
         }
         return $Rezult
     }
 
-    Add ([string]$name, [Hashtable]$Array) {
+    AddVareables ($dictionary){
+        if ($dictionary.GetType().Name -eq "Hashtable") {
+            $this.variables = $dictionary
+        }
+    }
+
+    AddArray ([string]$name, [Hashtable]$Array) {
         $ObjectArray = New-Object pscustomobject
         if ($this.DataCollection.Count -eq 0) {
             $this.DataCollection += $this.CreateNewArray($name,$Array)
@@ -87,10 +90,6 @@ class Template : Enveroment
                 }
             }
         }
-    }
-
-    [pscustomobject]Show(){
-        return $this.DataCollection
     }
 
     hidden [pscustomobject]CreateNewArray ([string]$name, [Hashtable]$Array) {
