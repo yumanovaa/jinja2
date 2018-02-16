@@ -13,6 +13,7 @@ class Template : Enveroment
     [string]$TemplateString
     [System.IO.FileInfo]$TemplateFile
     [System.Object]$TemplateArrayString
+    [pscustomobject]$DataCollection
 
     Template ($template) {
         switch ($template.GetType()) {
@@ -20,6 +21,7 @@ class Template : Enveroment
             System.Object[] {$this.TemplateArrayString = $template}
             DEFAULT {$this.TemplateString = $template}
         }
+        $this.DataCollection = @()
     }
 
     [string]render ($dictionary) {
@@ -36,28 +38,37 @@ class Template : Enveroment
         return $Rezult
     }
 
+    hidden [string]renderArray() {
+        [string]$Rezult = $this.TemplateString
+        foreach ($array in $this.DataCollection) {
+            for ($i = 0; $i -le $array.Array.Count; $i++) {
+                foreach ($key in $array.Array[$i].keys) {
+                    $Rezult = $Rezult -replace ("{{\s*" + $array.Name + '.' + $key + "\s*}}"), $array.Array[$i][$key]
+                }
+            }
+        }
+        return $Rezult
+    }
+
     [System.Object]renderFile($dictionary) {
         if ($dictionary.GetType().Name -eq "Hashtable") {
             $Rezult = $this.TemplateArrayString
             for ($i = 0; $i -le $Rezult.Count; $i++) {
-                if ($Rezult[$i] -match $this.VARIABLE_START_STRING) {
-                    $this.TemplateString = $Rezult[$i]
-                    $Rezult[$i] = $this.render($dictionary)
+                Switch -regex ($Rezult[$i]) {
+                    '{{\s*\w+\s*}}' {
+                        $this.TemplateString = $Rezult[$i]
+                        $Rezult[$i] = $this.render($dictionary)
+                    }
+                    '{{\s*\w+\.\w+\s*}}' {
+                        $this.TemplateString = $Rezult[$i]
+                        $Rezult[$i] = $this.renderArray()
+                    }
                 }
             }
         } else {
             $Rezult = "FAILED! Metod render accept only hashtable!"
         }
         return $Rezult
-    }
-}
-
-class DataArray
-{
-    [pscustomobject]$DataCollection
-
-    DataArray () {
-        $this.DataCollection = @()
     }
 
     Add ([string]$name, [Hashtable]$Array) {
@@ -93,13 +104,8 @@ class DataArray
     }
 }
 
-
 function Set-Template($Template) {
     return [Template]::new($Template)
 }
 
-function Set-DataArray($Template) {
-    return [DataArray]::new()
-}
-
-Export-ModuleMember -Function Set-Template, Set-DataArray
+Export-ModuleMember -Function Set-Template
