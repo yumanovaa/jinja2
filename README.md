@@ -17,7 +17,7 @@ PS C:\>Hello Alex, I am inside Ford Mustang!
 ## With string Array
 
 Web.config.jn2
-```
+```HTML, XML
 <?xml version="1.0"?>
 <configuration>
   <configSections>
@@ -42,7 +42,7 @@ Set-Content -Path .\Web.config -Value ($template.renderFile())
 
 ## With Arrays
 Web.config.jn2
-```
+```HTML, XML
 ...
   <environments>
     {% for key in keys %}  			  
@@ -98,5 +98,5 @@ $variables = @{
 }
 $template.AddArray("environments", $variables)
 
-Set-Content -Path .\Web.config -Value ($template.renderFile($variables))
+Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```
