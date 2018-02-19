@@ -25,6 +25,10 @@ class Template : Enveroment
         $this.DataCollection = @()
     }
 
+    [pscustomobject]show () {
+        return $this.DataCollection
+    }
+
     [string]render () {
         [string]$Rezult = $this.TemplateString
         if ($this.variables.GetType().Name -eq "Hashtable") {
@@ -42,26 +46,84 @@ class Template : Enveroment
     hidden [string]renderArray() {
         [string]$Rezult = $this.TemplateString
         foreach ($array in $this.DataCollection) {
-            for ($i = 0; $i -le $array.Array.Count; $i++) {
-                foreach ($key in $array.Array[$i].keys) {
-                    $Rezult = $Rezult -replace ("{{\s*" + $array.Name + '.' + $key + "\s*}}"), $array.Array[$i][$key]
+            if ($this.TemplateString -match ("{{\s*" + $array.Name + '.' + "\w*\s*}}")) {
+                foreach ($key in $array.Array[0].keys) {
+                    $Rezult = $Rezult -replace ("{{\s*" + $array.Name + '.' + $key + "\s*}}"), $array.Array[0][$key]
                 }
             }
         }
         return $Rezult
     }
 
-    [System.Object]renderFile() {        
-    $Rezult = $this.TemplateArrayString
-    for ($i = 0; $i -le $Rezult.Count; $i++) {
-        Switch -regex ($Rezult[$i]) {
-            '{{\s*\w+\s*}}' {
-                $this.TemplateString = $Rezult[$i]
-                $Rezult[$i] = $this.render()
+    [System.Object]renderFile() {
+        $Rezult = @()
+        $k = 0
+        for ($i = 0; $i -le $this.TemplateArrayString.Count; $i++) {
+            $tmp = $this.TemplateArrayString[$i]
+            [boolean]$Cycle = $false
+            Switch -regex ($tmp) {
+                '{{\s*\w+\s*}}' {
+                    $this.TemplateString = $tmp
+                    $tmp = $this.render()
                 }
-            '{{\s*\w+\.\w+\s*}}' {
-                $this.TemplateString = $Rezult[$i]
-                $Rezult[$i] = $this.renderArray()
+                '{{\s*\w+\.\w+\s*}}' {
+                    $this.TemplateString = $tmp
+                    $tmp = $this.renderArray()
+                }
+                '^\s*{%\s*for\s*\w+\s*in\s*\w+\s*%}\s*$' {
+                    $Rezult = $this.ProcessingCycle($Rezult,$i)
+                    while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endfor\s*%}\s*$') {
+                        $i++
+                    }
+                    $Cycle = $true
+                }
+                DEFAULT {
+                    $tmp = $this.TemplateArrayString[$i]
+                }
+            }
+            if (!$Cycle) {$Rezult += $tmp}
+        }
+        return $Rezult
+    }
+
+    hidden [System.Object]ProcessingCycle ($Rezult,$i) {
+        $tmp = $this.TemplateArrayString[$i] -replace '^\s*{%\s*for\s*'
+        $AleasArray = $tmp -replace '\s*in\s*\w+\s*%}\s*$'
+        $tmp = $this.TemplateArrayString[$i] -replace '^\s*{%\s*for\s*\w+\s*in\s*'
+        $TargetArray = $tmp -replace '\s*%}\s*$'
+        $i++
+        $StartCycle = $i
+        while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endfor\s*%}\s*$') {
+            $i++
+        }
+        $EndCycle = ($i - 1)
+        foreach ($array in $this.DataCollection) {
+            if ($TargetArray -eq $array.Name) {
+                for ($k = 0; $k -lt $array.Array.Count; $k++) {
+                    for ($s = $StartCycle; $s -le $EndCycle; $s++) {
+                        $tmp = $this.TemplateArrayString[$s]
+                        if ($tmp -match ('{{\s*' + $AleasArray + '\.\w+\s*}}')){        
+                            foreach ($key in $array.Array[$k].keys) {
+                                $tmp = $tmp -replace ('{{\s*' + $AleasArray + '\.' + $key + '\s*}}'),($array.Array[$k][$key])
+                            }
+                            $Rezult += $tmp
+                        } else {
+                            switch -regex ($tmp) {
+                                '{{\s*\w+\s*}}' {
+                                    $this.TemplateString = $tmp
+                                    $tmp = $this.render()
+                                }
+                                '{{\s*\w+\.\w+\s*}}' {
+                                    $this.TemplateString = $tmp
+                                    $tmp = $this.renderArray()
+                                }
+                                DEFAULT {
+                                    $tmp = $tmp
+                                }
+                            }
+                            $Rezult += $tmp
+                        }
+                    }
                 }
             }
         }
@@ -85,9 +147,9 @@ class Template : Enveroment
                     $existArray = $true
                     $this.DataCollection[$i].Array += $Array
                 }
-                if (!$existArray) {
-                    $this.DataCollection += $this.CreateNewArray($name,$Array)
-                }
+            }
+            if (!$existArray) {
+                $this.DataCollection += $this.CreateNewArray($name,$Array)
             }
         }
     }

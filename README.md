@@ -9,12 +9,12 @@ $template.AddVareables(@{
     name = "Alex"
     Make = "Ford"
     Model = "Mustang"
-    Color = "Red"
+    TestValue = "Test permanent key"
     })
 $template.render()
 PS C:\>Hello Alex, I am inside Ford Mustang!
 ```
-## Work with files template
+## With string Array
 
 Web.config.jn2
 ```
@@ -24,7 +24,7 @@ Web.config.jn2
     <section name="environments" type="something type"/>
   </configSections>
   <connectionStrings>
-    <add name="CRMDB" connectionString="Data Source={{ CRM.DBHost }};Initial Catalog={{ CRM.DBName }};Integrated Security=True;/>
+    <add name="{{ TestValue }}" connectionString="Data Source={{ CRM.DBHost }};Initial Catalog={{ CRM.DBName }};Integrated Security=True;/>
   </connectionStrings>
 ...
 ```
@@ -36,6 +36,67 @@ $variables = @{
     DBName = "CRMDB"
 }
 
-$template.Add("CRM", $variables)
+$template.AddArray("CRM", $variables)
+Set-Content -Path .\Web.config -Value ($template.renderFile())
+```
+
+## With Arrays
+Web.config.jn2
+```
+...
+  <environments>
+    {% for key in keys %}  			  
+	<add key="{{ key.Name }}" value="{{ key.value }}"/>
+	<add key="{{ TestValue }}" value="{{ CRM.DBName }}"/>
+	{% endfor %}
+  </environments>
+...
+    <client>
+      {% for environment in environments %}  			  
+	  <endpoint address="{{ environment.address }}" binding="{{ environment.binding }}" contract="{{ environment.contract }}" name="{{ environment.name }}"/>
+	  {% endfor %}
+    </client>
+...
+```
+
+```PowerShell
+$template = Set-Template(Get-Content .\Web.config.jn2)
+$variables = @{
+    Name = "Key1"
+    Value = "200"
+}
+$template.AddArray("Keys", $variables)
+$variables = @{
+    Name = "Key2"
+    Value = "300"
+}
+$template.AddArray("Keys", $variables)
+$variables = @{
+    Name = "Key3"
+    Value = "400"
+}
+$template.AddArray("Keys", $variables)
+$variables = @{
+    name = "Name1"
+    address = "https://address.1"
+    binding = "binding.1"
+    contract = "contract.1"
+}
+$template.AddArray("environments", $variables)
+$variables = @{
+    name = "Name2"
+    address = "https://address.2"
+    binding = "binding.2"
+    contract = "contract.2"
+}
+$template.AddArray("environments", $variables)
+$variables = @{
+    name = "Name3"
+    address = "https://address.3"
+    binding = "binding.3"
+    contract = "contract.3"
+}
+$template.AddArray("environments", $variables)
+
 Set-Content -Path .\Web.config -Value ($template.renderFile($variables))
 ```
