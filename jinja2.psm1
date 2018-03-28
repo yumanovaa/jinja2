@@ -46,10 +46,11 @@ class Template : Enveroment
     hidden [string]renderArray() {
         [string]$Rezult = $this.TemplateString
         foreach ($array in $this.DataCollection) {
-            if ($this.TemplateString -match ("{{\s*" + $array.Name + '.' + "\w*\s*}}")) {
+            if ($this.TemplateString -match ("{{\s*" + $array.Name + '.' + "\w+\s*}}")) {
                 foreach ($key in $array.Array[0].keys) {
                     $Rezult = $Rezult -replace ("{{\s*" + $array.Name + '.' + $key + "\s*}}"), $array.Array[0][$key]
                 }
+                break
             }
         }
         return $Rezult
@@ -60,7 +61,7 @@ class Template : Enveroment
         $k = 0
         for ($i = 0; $i -le $this.TemplateArrayString.Count; $i++) {
             $tmp = $this.TemplateArrayString[$i]
-            [boolean]$Cycle = $false
+            [boolean]$Skip = $false
             Switch -regex ($tmp) {
                 '{{\s*\w+\s*}}' {
                     $this.TemplateString = $tmp
@@ -75,15 +76,58 @@ class Template : Enveroment
                     while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endfor\s*%}\s*$') {
                         $i++
                     }
-                    $Cycle = $true
+                    $Skip = $true
+                }
+                '{%\s*if.*%}' {
+                    if ($this.TestIf($tmp)) {
+                        $tmp = $tmp -replace '{%\s*if.*%}','TRUE'
+                    } else {
+                        while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endif\s*%}\s*$') {
+                            $i++
+                        }
+                    }
+                    $Skip = $true
+                }
+                '{%\s*endif\s*%}'{
+                    $Skip = $true
                 }
                 DEFAULT {
                     $tmp = $this.TemplateArrayString[$i]
                 }
             }
-            if (!$Cycle) {$Rezult += $tmp}
+            if (!$Skip) {$Rezult += $tmp}
         }
         return $Rezult
+    }
+
+    hidden [boolean]TestIf ($ifVariable) {
+        [boolean]$rezTestIf = $false
+        switch -regex ($ifVariable) {
+            '{%\s*if\s+\w+\.*\w*\s*%}' {
+                $keyVariable = $ifVariable
+                $keyVariable = $keyVariable -replace '\s*{%\s*if\s+'
+                $keyVariable = $keyVariable -replace '\s*%}\s*'
+                if ($keyVariable -match '\.') {
+                    $arrayName = ($keyVariable -replace '\.\w+$','')
+                    $arrayKey = ($keyVariable -replace '^\w+\.','')
+                    foreach ($array in $this.DataCollection) {
+                        if ($array.Name -eq $arrayName) {
+                            foreach ($key in $array.Array.Keys) {
+                                if ($key -eq $arrayKey) {
+                                    $rezTestIf = $true
+                                    break
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+            }
+            DEFAULT {
+                $rezTestIf = $false
+            }
+        }
+        return $rezTestIf
     }
 
     hidden [System.Object]ProcessingCycle ($Rezult,$i) {

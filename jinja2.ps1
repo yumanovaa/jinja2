@@ -26,6 +26,8 @@
 .EXTERNALSCRIPTDEPENDENCIES jinja2.psm1
 
 .RELEASENOTES
+ Release 1.1.0
+ Add simple "if"
  Release 1.0.2
  Processing String array
  Processing Array with String array
