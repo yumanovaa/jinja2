@@ -106,14 +106,23 @@ Web.config.jn2
 ```HTML, XML
 ...
   <environments>
-    {% if CRM.Info %}  			  
+{% if CRM.Info %}  			  
 	Variables exist!
-	{% endif %}
+{% endif %}
+{% if name %}  			  
+	Variables exist!
+{% endif %}
+{% if notExist %}  			  
+	Variables exist!
+{% endif %}
   </environments>
 ```
 ```PowerShell
 $template = Set-Template(Get-Content .\Web.config.jn2)
 $variables = @{'Info' = 'Info about this variable'}
 $template.AddArray("CRM", $variables)
+$template.AddVareables(@{
+    Name = "Alex"
+})
 Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```
