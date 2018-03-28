@@ -100,3 +100,20 @@ $template.AddArray("environments", $variables)
 
 Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```
+
+## "If" construction
+Web.config.jn2
+```HTML, XML
+...
+  <environments>
+    {% if CRM.Info %}  			  
+	Variables exist!
+	{% endif %}
+  </environments>
+```
+```PowerShell
+$template = Set-Template(Get-Content .\Web.config.jn2)
+$variables = @{'Info' = 'Info about this variable'}
+$template.AddArray("CRM", $variables)
+Set-Content -Path .\Web.config -Value ($template.renderFile())
+```

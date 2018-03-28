@@ -107,7 +107,7 @@ class Template : Enveroment
                 $keyVariable = $ifVariable
                 $keyVariable = $keyVariable -replace '\s*{%\s*if\s+'
                 $keyVariable = $keyVariable -replace '\s*%}\s*'
-                if ($keyVariable -match '\.') {
+                if ($keyVariable -match "\.") {
                     $arrayName = ($keyVariable -replace '\.\w+$','')
                     $arrayKey = ($keyVariable -replace '^\w+\.','')
                     foreach ($array in $this.DataCollection) {
@@ -118,6 +118,13 @@ class Template : Enveroment
                                     break
                                 }
                             }
+                            break
+                        }
+                    }
+                } else {
+                    foreach ($key in $this.variables.keys) {
+                        if ($key -eq $keyVariable) {
+                            $rezTestIf = $true
                             break
                         }
                     }

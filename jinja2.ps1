@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.0.2
+.VERSION 1.1.1
 
 .GUID 9f4449f8-c9a6-4f67-b02d-b4e49fa9334e
 
@@ -26,6 +26,8 @@
 .EXTERNALSCRIPTDEPENDENCIES jinja2.psm1
 
 .RELEASENOTES
+ Release 1.1.1
+ Modified simple "if" for string variables
  Release 1.1.0
  Add simple "if"
  Release 1.0.2
