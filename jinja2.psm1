@@ -128,6 +128,14 @@ class Template : Enveroment
                             break
                         }
                     }
+                    if (!$rezTestIf) {
+                        foreach ($array in $this.DataCollection) {
+                            if ($array.Name -eq $keyVariable) {
+                                $rezTestIf = $true
+                                break
+                            }
+                        }
+                    }
                 }
             }
             DEFAULT {

@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.1.1
+.VERSION 1.1.2
 
 .GUID 9f4449f8-c9a6-4f67-b02d-b4e49fa9334e
 
@@ -26,10 +26,13 @@
 .EXTERNALSCRIPTDEPENDENCIES jinja2.psm1
 
 .RELEASENOTES
+ Release 1.1.2
+ Fix bug "if" Construct
  Release 1.1.1
  Modified simple "if" for string variables
+ Modified simple "if" for test String Array name
  Release 1.1.0
- Add simple "if"
+ Add simple "if" for items String Array
  Release 1.0.2
  Processing String array
  Processing Array with String array
