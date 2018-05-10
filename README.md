@@ -1,19 +1,5 @@
 # Jinja2 for PowerShell
 
-## Basic API Usage
-```PowerShell
-Import-Module –Name .\jinja2 -PassThru
-
-$template = Set-Template('Hello {{ Name }}, I am in {{Make }} {{Model}}!')
-$template.AddVareables(@{
-    name = "Alex"
-    Make = "Ford"
-    Model = "Mustang"
-    TestValue = "Test permanent key"
-    })
-$template.render()
-PS C:\>Hello Alex, I am inside Ford Mustang!
-```
 ## With string Array
 
 Web.config.jn2
@@ -24,19 +10,20 @@ Web.config.jn2
     <section name="environments" type="something type"/>
   </configSections>
   <connectionStrings>
-    <add name="{{ TestValue }}" connectionString="Data Source={{ CRM.DBHost }};Initial Catalog={{ CRM.DBName }};Integrated Security=True;/>
+    <add name="{{ TestValue }}" connectionString="Data Source={{ CRM.DataBaseAddress }};Initial Catalog={{ CRM.DataBaseName }};Integrated Security=True;/>
   </connectionStrings>
 ...
 ```
 
 ```PowerShell
-$template = Set-Template(Get-Content .\Web.config.jn2)
-$variables = @{
-    DBHost = "mssql.uat.local"
-    DBName = "CRMDB"
-}
+$yaml = @"
+TestValue: 'DATABASE_NAME'
 
-$template.AddArray("CRM", $variables)
+CRM:
+  - { DataBaseAddress: 'localhost', DataBaseName: 'CRMDB' }
+"@
+$template = Set-Template(Get-Content .\Web.config.jn2)
+$template.SetDataCollection($yaml)
 Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```
 
@@ -60,44 +47,24 @@ Web.config.jn2
 ```
 
 ```PowerShell
-$template = Set-Template(Get-Content .\Web.config.jn2)
-$variables = @{
-    Name = "Key1"
-    Value = "200"
-}
-$template.AddArray("Keys", $variables)
-$variables = @{
-    Name = "Key2"
-    Value = "300"
-}
-$template.AddArray("Keys", $variables)
-$variables = @{
-    Name = "Key3"
-    Value = "400"
-}
-$template.AddArray("Keys", $variables)
-$variables = @{
-    name = "Name1"
-    address = "https://address.1"
-    binding = "binding.1"
-    contract = "contract.1"
-}
-$template.AddArray("environments", $variables)
-$variables = @{
-    name = "Name2"
-    address = "https://address.2"
-    binding = "binding.2"
-    contract = "contract.2"
-}
-$template.AddArray("environments", $variables)
-$variables = @{
-    name = "Name3"
-    address = "https://address.3"
-    binding = "binding.3"
-    contract = "contract.3"
-}
-$template.AddArray("environments", $variables)
+$yaml = @"
+TestValue: 'DATABASE_NAME'
 
+CRM:
+  - { DataBaseAddress: 'localhost', DataBaseName: 'CRMDB' }
+
+Keys:
+  - { Name: 'Key1', Value: '100' }
+  - { Name: 'Key2', Value: '200' }
+  - { Name: 'Key3', Value: '300' }
+  
+environments:
+  - { name: 'Name1',  address: 'https://address.1', binding: 'binding.1', contract: 'contract.1'}
+  - { name: 'Name2',  address: 'https://address.2', binding: 'binding.2', contract: 'contract.2'}
+  - { name: 'Name3',  address: 'https://address.3', binding: 'binding.3', contract: 'contract.3'}
+"@
+$template = Set-Template(Get-Content .\Web.config.jn2)
+$template.SetDataCollection($yaml)
 Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```
 
@@ -118,11 +85,15 @@ Web.config.jn2
   </environments>
 ```
 ```PowerShell
+$yaml = @"
+TestValue: 'DATABASE_NAME'
+
+CRM:
+  - { DataBaseAddress: 'localhost', DataBaseName: 'CRMDB', Info: 'Info about this variable' }
+  
+Name: 'Alex'
+"@
 $template = Set-Template(Get-Content .\Web.config.jn2)
-$variables = @{'Info' = 'Info about this variable'}
-$template.AddArray("CRM", $variables)
-$template.AddVareables(@{
-    Name = "Alex"
-})
+$template.SetDataCollection($yaml)
 Set-Content -Path .\Web.config -Value ($template.renderFile())
 ```

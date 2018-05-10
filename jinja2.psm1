@@ -6,6 +6,10 @@
     [string]$VARIABLE_END_STRING = '}}'
     [string]$COMMENT_START_STRING = '{#'
     [string]$COMMENT_END_STRING = '#}'
+    [string]$PATTERN_STRING_ARRAY = ($this.VARIABLE_START_STRING + '\s*(\w+)\.(\w+)\s*' + $this.VARIABLE_END_STRING)
+    [string]$PATTERN_VARIABLE = ($this.VARIABLE_START_STRING + '\s*(\w+)\s*' + $this.VARIABLE_END_STRING)
+    [string]$PATTERN_START_CYCLE = ('^\s*' + $this.BLOCK_START_STRING + '\s*for\s+(\w+)\s+in\s+(\w+)\s*' + $this.BLOCK_END_STRING + '\s*$')
+    [string]$PATTERN_END_CYCLE = ('^\s*' + $this.BLOCK_START_STRING + '\s*endfor\s*' + $this.BLOCK_END_STRING + '\s*$')
 }
 
 class Template : Enveroment
@@ -25,35 +29,39 @@ class Template : Enveroment
         $this.DataCollection = @()
     }
 
-    [pscustomobject]show () {
-        return $this.DataCollection
+    SetDataCollection ($UserDataCollection) {
+        if(!$UserDataCollection){
+            return
+        }
+        $this.DataCollection = ConvertFrom-Yaml $UserDataCollection
     }
 
-    [string]render () {
-        [string]$Rezult = $this.TemplateString
-        if ($this.variables.GetType().Name -eq "Hashtable") {
-            foreach ($key in $this.variables.keys) {
-                if ($Rezult -match ($this.VARIABLE_START_STRING + '\s*' + $key  + '\s*' + $this.VARIABLE_END_STRING)){
-                    $Rezult = $Rezult -replace ($this.VARIABLE_START_STRING + '\s*' + $key  + '\s*' + $this.VARIABLE_END_STRING),($this.variables[$key])
+    [string]render ([string]$String) {
+            DO {
+                $ValueName = $String -replace ('^.*' + $this.PATTERN_VARIABLE + '.*$'), '$1'
+                if ($this.DataCollection.keys -match $ValueName) {
+                    $String = $String -replace ('{{\s*' + $ValueName + '\s*}}'), $this.DataCollection[$ValueName]
                 }
-            }
-        } else {
-            $Rezult = "FAILED! Metod render accept only hashtable!"
-        }
-        return $Rezult
+            } while ($String -match $this.PATTERN_VARIABLE)
+        return $String
     }
 
-    hidden [string]renderArray() {
-        [string]$Rezult = $this.TemplateString
-        foreach ($array in $this.DataCollection) {
-            if ($this.TemplateString -match ("{{\s*" + $array.Name + '.' + "\w+\s*}}")) {
-                foreach ($key in $array.Array[0].keys) {
-                    $Rezult = $Rezult -replace ("{{\s*" + $array.Name + '.' + $key + "\s*}}"), $array.Array[0][$key]
+    hidden [string]renderArray($String) {
+        DO {
+            $ExistVariable = $true
+            $ArrayName = $String -replace ('^.*' + $this.PATTERN_STRING_ARRAY + '.*$'), '$1'
+            $ValueName = $String -replace ('^.*' + $this.PATTERN_STRING_ARRAY + '.*$'), '$2'
+            if ($this.DataCollection.Keys -match $ArrayName) {
+                if ($this.DataCollection[$ArrayName].Keys -match $ValueName) {
+                    $String = $String -replace ("{{\s*" + $ArrayName + '.' + $ValueName + "\s*}}"), $this.DataCollection[$ArrayName][0][$ValueName]
+                } else {
+                    $ExistVariable = $false
                 }
-                break
+            } else {
+                $ExistVariable = $false
             }
-        }
-        return $Rezult
+        } while (($String -match $this.PATTERN_STRING_ARRAY) -and $ExistVariable)
+        return $String
     }
 
     [System.Object]renderFile() {
@@ -63,17 +71,15 @@ class Template : Enveroment
             $tmp = $this.TemplateArrayString[$i]
             [boolean]$Skip = $false
             Switch -regex ($tmp) {
-                '{{\s*\w+\s*}}' {
-                    $this.TemplateString = $tmp
-                    $tmp = $this.render()
+                $this.PATTERN_VARIABLE {
+                    $tmp = $this.render($tmp)
                 }
-                '{{\s*\w+\.\w+\s*}}' {
-                    $this.TemplateString = $tmp
-                    $tmp = $this.renderArray()
+                $this.PATTERN_STRING_ARRAY {
+                    $tmp = $this.renderArray($tmp)
                 }
-                '^\s*{%\s*for\s*\w+\s*in\s*\w+\s*%}\s*$' {
+                $this.PATTERN_START_CYCLE {
                     $Rezult = $this.ProcessingCycle($Rezult,$i)
-                    while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endfor\s*%}\s*$') {
+                    while ($this.TemplateArrayString[$i] -notmatch $this.PATTERN_END_CYCLE) {
                         $i++
                     }
                     $Skip = $true
@@ -146,43 +152,33 @@ class Template : Enveroment
     }
 
     hidden [System.Object]ProcessingCycle ($Rezult,$i) {
-        $tmp = $this.TemplateArrayString[$i] -replace '^\s*{%\s*for\s*'
-        $AleasArray = $tmp -replace '\s*in\s*\w+\s*%}\s*$'
-        $tmp = $this.TemplateArrayString[$i] -replace '^\s*{%\s*for\s*\w+\s*in\s*'
-        $TargetArray = $tmp -replace '\s*%}\s*$'
-        $i++
-        $StartCycle = $i
-        while ($this.TemplateArrayString[$i] -notmatch '^\s*{%\s*endfor\s*%}\s*$') {
-            $i++
-        }
-        $EndCycle = ($i - 1)
-        foreach ($array in $this.DataCollection) {
-            if ($TargetArray -eq $array.Name) {
-                for ($k = 0; $k -lt $array.Array.Count; $k++) {
-                    for ($s = $StartCycle; $s -le $EndCycle; $s++) {
-                        $tmp = $this.TemplateArrayString[$s]
-                        if ($tmp -match ('{{\s*' + $AleasArray + '\.\w+\s*}}')){        
-                            foreach ($key in $array.Array[$k].keys) {
-                                $tmp = $tmp -replace ('{{\s*' + $AleasArray + '\.' + $key + '\s*}}'),($array.Array[$k][$key])
-                            }
-                            $Rezult += $tmp
-                        } else {
-                            switch -regex ($tmp) {
-                                '{{\s*\w+\s*}}' {
-                                    $this.TemplateString = $tmp
-                                    $tmp = $this.render()
+        $String= ''
+        $AleasArray = $this.TemplateArrayString[$i] -replace $this.PATTERN_START_CYCLE, '$1' #Получаем алиас имени массива
+        $TargetArray = $this.TemplateArrayString[$i] -replace $this.PATTERN_START_CYCLE, '$2' #Получаем само имя массива
+        if ($this.DataCollection.Keys -match $TargetArray) {
+            for ($k = 0; $k -lt $this.DataCollection[$TargetArray].Count; $k++) { #Выполняем цикл столько раз, сколько в массиве элементов
+                $s = ($i+1)
+                while ($this.TemplateArrayString[$s] -notmatch $this.PATTERN_END_CYCLE) { #Выполняем замену элементов пока не уткнемся в строку завершения цикла
+                    $String = $this.TemplateArrayString[$s]
+                    switch -regex ($String) {
+                        $this.PATTERN_VARIABLE {
+                            $String = $this.render($String)
+                        }
+                        $this.PATTERN_STRING_ARRAY {
+                            DO {
+                                $valueName = $String -replace ('^.*' + $this.PATTERN_STRING_ARRAY + '.*$'), '$2'
+                                if ($String -match ('{{\s*' + $AleasArray + '\.')) {
+                                    if ($this.DataCollection[$TargetArray].Keys -match $valueName) {
+                                        $String = $String -replace ('{{\s*' + $AleasArray + '\.' + $valueName + '\s*}}'), $this.DataCollection[$TargetArray][$k][$valueName]
+                                    }
+                                } else {
+                                    $String = $this.renderArray($String)
                                 }
-                                '{{\s*\w+\.\w+\s*}}' {
-                                    $this.TemplateString = $tmp
-                                    $tmp = $this.renderArray()
-                                }
-                                DEFAULT {
-                                    $tmp = $tmp
-                                }
-                            }
-                            $Rezult += $tmp
+                            } while ($String -match $this.PATTERN_STRING_ARRAY)
                         }
                     }
+                    $s++
+                    $Rezult += $String
                 }
             }
         }

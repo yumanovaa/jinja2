@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.1.2
+.VERSION 1.2.0
 
 .GUID 9f4449f8-c9a6-4f67-b02d-b4e49fa9334e
 
@@ -26,6 +26,10 @@
 .EXTERNALSCRIPTDEPENDENCIES jinja2.psm1
 
 .RELEASENOTES
+ Release 2.0.0
+ Add function Set collection data in YAML format
+ Release 1.2.0
+ Add function GetVariables in PSObject
  Release 1.1.2
  Fix bug "if" Construct
  Release 1.1.1
